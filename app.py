@@ -175,6 +175,7 @@ def main() -> None:
             gesture_confidence = 0.0
             cursor_pos = None
             dist_ti = None
+            finger_states = {}
             
             if landmarks:
                 # Expose confidence rating
@@ -186,6 +187,7 @@ def main() -> None:
                 gesture, gesture_data = detector.get_gesture(landmarks, hand_label)
                 gesture_confidence = gesture_data.get("confidence", 0.0)
                 dist_ti = gesture_data.get("dist_thumb_index", None)
+                finger_states = gesture_data.get("finger_states", {})
                 
                 # Execute mouse movement/clicks
                 try:
@@ -215,7 +217,7 @@ def main() -> None:
             cv2.rectangle(overlay, (0, config.CAM_HEIGHT - 35), (config.CAM_WIDTH, config.CAM_HEIGHT), (30, 25, 25), -1)
             cv2.addWeighted(overlay, 0.65, frame, 0.35, 0, frame)
             
-            # 3. Blinking Pause Status Badge
+            # 3. Blinking Pause Status Badge and Click State
             is_paused = controller.is_paused
             state_color = (0, 165, 255) if is_paused else (0, 255, 128)  # Orange vs Bright Green
             state_text = "SYSTEM PAUSED" if is_paused else "SYSTEM ACTIVE"
@@ -224,7 +226,16 @@ def main() -> None:
             if not is_paused or int(time.time() * 2) % 2 == 0:
                 cv2.circle(frame, (25, 28), 6, state_color, -1, cv2.LINE_AA)
             cv2.circle(frame, (25, 28), 6, (20, 20, 20), 1, cv2.LINE_AA)
-            draw_text(frame, state_text, (40, 33), scale=0.55, color=state_color, thickness=2)
+            draw_text(frame, state_text, (40, 31), scale=0.5, color=state_color, thickness=2)
+            
+            # Mouse click / button state
+            if controller.is_dragging:
+                draw_text(frame, "BUTTON DOWN (DRAG)", (40, 48), scale=0.4, color=(0, 0, 255), thickness=1)
+            elif time.time() - controller.last_click_time < 0.4 and controller.last_click_event:
+                click_event_text = f"EVENT: {controller.last_click_event.replace('_', ' ').upper()}"
+                draw_text(frame, click_event_text, (40, 48), scale=0.4, color=(0, 255, 128), thickness=1)
+            else:
+                draw_text(frame, "BUTTON UP (IDLE)", (40, 48), scale=0.4, color=(160, 160, 160), thickness=1)
             
             # 4. Tracking Quality indicator
             if not landmarks:
@@ -266,6 +277,24 @@ def main() -> None:
             draw_corners(frame, (box_left, box_top), (box_right, box_bottom), box_color, 2, 20)
             draw_text(frame, "Active Tracking Box", (box_left + 5, box_top - 8), scale=0.42, color=box_color, thickness=1)
             
+            # Render Finger States Card (Left-Middle Overlay)
+            if landmarks and finger_states:
+                card_x1, card_y1 = 15, 80
+                card_w, card_h = 115, 95
+                card_overlay = frame.copy()
+                cv2.rectangle(card_overlay, (card_x1, card_y1), (card_x1 + card_w, card_y1 + card_h), (25, 20, 20), -1)
+                cv2.addWeighted(card_overlay, 0.6, frame, 0.4, 0, frame)
+                cv2.rectangle(frame, (card_x1, card_y1), (card_x1 + card_w, card_y1 + card_h), (80, 80, 80), 1)
+                
+                draw_text(frame, "FINGERS", (card_x1 + 8, card_y1 + 15), scale=0.38, color=(0, 255, 255), thickness=1)
+                
+                fingers = ["Thumb", "Index", "Middle", "Ring", "Pinky"]
+                for i, finger in enumerate(fingers):
+                    extended = finger_states.get(finger, False)
+                    color = (0, 255, 128) if extended else (150, 150, 150)
+                    status = "EXT" if extended else "FLD"
+                    draw_text(frame, f"{finger}: {status}", (card_x1 + 8, card_y1 + 32 + i * 11), scale=0.32, color=color, thickness=1)
+            
             # 8. Render Gesture Label Card (Center-Bottom Overlay)
             gesture_colors = {
                 "No Hand": (120, 120, 120),
@@ -275,9 +304,12 @@ def main() -> None:
                 "Double Click": (0, 255, 255),
                 "Drag Start": (255, 0, 255),
                 "Drag": (255, 0, 255),
+                "Drag End": (0, 255, 0),
                 "Drop": (0, 255, 0),
                 "Scroll Mode": (255, 255, 0),
-                "Pause Cursor": (0, 0, 255)
+                "Pause Mouse": (0, 0, 255),
+                "Pause Cursor": (0, 0, 255),
+                "Screenshot": (0, 255, 255)
             }
             g_color = gesture_colors.get(gesture, (255, 255, 255))
             
@@ -298,7 +330,7 @@ def main() -> None:
                 draw_text(frame, f"Hand: {hand_label}", (config.CAM_WIDTH - 120, config.CAM_HEIGHT - 48), scale=0.48, color=(200, 255, 200), thickness=1)
  
             # Legends Footer Description
-            legends = "Index: Move | Pinch: Left Click | Double Pinch: Right Click | Hold Pinch: Scroll | Palm: Pause | Q: Exit"
+            legends = "Pinch: Click/Drag | 2 Taps: R-Click | Slide: Scroll | Thumb+Mid: D-Click | Fist: Pause | Q: Exit"
             draw_text(frame, legends, (15, config.CAM_HEIGHT - 12), scale=0.42, color=(180, 180, 180), thickness=1)
             
             # Show image frame

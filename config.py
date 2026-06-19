@@ -19,7 +19,7 @@ DEFAULTS: Dict[str, Any] = {
     "DEADZONE_PIXELS": 2,        # Tiny movement threshold to ignore jitter
     
     # Smoothing Settings
-    "SMOOTHING_METHOD": "kalman",  # Default to Kalman Filter
+    "SMOOTHING_METHOD": "one_euro",  # Default to One Euro Filter
     "SMOOTHING_ALPHA": 0.15,         # For EMA
     
     # One Euro Filter parameters
@@ -46,13 +46,13 @@ DEFAULTS: Dict[str, Any] = {
     "DOUBLE_CLICK_RELEASE_THRESHOLD": 0.040, # Hysteresis threshold to release Double Click
     
     # New Touch and Double Tap Gestures
-    "TOUCH_THRESHOLD": 0.12,                # Normalized distance threshold for touch detection
-    "RELEASE_THRESHOLD": 0.18,              # Normalized distance threshold for release detection
+    "TOUCH_THRESHOLD": 0.15,                # Normalized distance threshold for touch detection
+    "RELEASE_THRESHOLD": 0.20,              # Normalized distance threshold for release detection
     "GESTURE_CONFIRM_FRAMES": 2,            # Number of frames to confirm touch or release
     "RAPID_MOVEMENT_THRESHOLD": 1.5,        # Normal velocity limit to block accidental click triggers
     "TAP_MAX_DURATION": 0.25,               # Max duration of a tap gesture in seconds
     "DOUBLE_TAP_MIN_WINDOW": 0.10,          # Min interval between consecutive taps
-    "DOUBLE_TAP_MAX_WINDOW": 0.22,          # Max interval between consecutive taps
+    "DOUBLE_TAP_MAX_WINDOW": 0.30,          # Max interval between consecutive taps
     "LATENCY_COMPENSATION_SEC": 0.06,       # Motion prediction time step for Kalman Filter
     "STATIONARY_VELOCITY_THRESHOLD": 15.0,  # Velocity threshold to zero out movement drift
     "DRAG_START_DELAY": 0.35,               # Hold time in seconds to initiate Drag & Drop

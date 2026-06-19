@@ -6,7 +6,7 @@ from typing import Tuple, Optional, Any
 import config
 
 # Disable PyAutoGUI delay for faster responsiveness
-pyautogui.PAUSE = 0.001
+pyautogui.PAUSE = 0
 
 class OneEuroFilter:
     """
@@ -333,7 +333,7 @@ class MouseController:
             
             # Map distance to dynamic EMA smoothing factor:
             # Slow movements (small dist) are smoothed heavily, fast movements (large dist) respond instantly.
-            min_alpha = 0.08
+            min_alpha = 0.03
             max_alpha = 0.95
             alpha = min_alpha + (max_alpha - min_alpha) * min(1.0, dist_lm / 0.012)
             
@@ -379,6 +379,10 @@ class MouseController:
 
         # Smooth target coordinates using configured method (Kalman, One Euro, EMA)
         smooth_x, smooth_y = self.smooth_coordinates(self.cursor_target_x, self.cursor_target_y)
+        
+        # Strictly clamp smoothed coordinates to physical screen boundaries to avoid pyautogui errors
+        smooth_x = max(0, min(config.SCREEN_WIDTH - 1, int(smooth_x)))
+        smooth_y = max(0, min(config.SCREEN_HEIGHT - 1, int(smooth_y)))
 
         # Handle Scroll Mode
         if gesture == "Scroll Mode":
