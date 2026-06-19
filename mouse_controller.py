@@ -319,17 +319,27 @@ class MouseController:
 
         lms = landmarks.landmark
  
-        # Track the midpoint between Index Finger Tip (Landmark 8) and Thumb Tip (Landmark 4)
-        # to ensure the cursor tracks the center of the pinch rather than jumping.
+        # Determine tracking point dynamically based on configuration.
+        # This allows tracking a stable knuckle (like INDEX_FINGER_MCP, Landmark 5)
+        # to completely eliminate cursor movement/drift when pinching to click.
         class TrackingPoint:
             def __init__(self, x: float, y: float):
                 self.x = x
                 self.y = y
                 
-        tracking_lm = TrackingPoint(
-            x=(lms[8].x + lms[4].x) / 2.0,
-            y=(lms[8].y + lms[4].y) / 2.0
-        )
+        tracking_lm_id = getattr(config, "TRACKING_LANDMARK_ID", 5)
+        if tracking_lm_id == "MIDPOINT":
+            tracking_lm = TrackingPoint(
+                x=(lms[8].x + lms[4].x) / 2.0,
+                y=(lms[8].y + lms[4].y) / 2.0
+            )
+        else:
+            try:
+                idx = int(tracking_lm_id)
+                tracking_lm = TrackingPoint(x=lms[idx].x, y=lms[idx].y)
+            except Exception:
+                # Fallback to Index Finger MCP
+                tracking_lm = TrackingPoint(x=lms[5].x, y=lms[5].y)
 
         # Adaptive landmark input smoothing to eliminate micro-jitter
         if self.filtered_lm_x is None or self.filtered_lm_y is None:
@@ -342,8 +352,8 @@ class MouseController:
             
             # Map distance to dynamic EMA smoothing factor:
             # Slow movements (small dist) are smoothed heavily, fast movements (large dist) respond instantly.
-            min_alpha = 0.03
-            max_alpha = 0.95
+            min_alpha = getattr(config, "LANDMARK_EMA_MIN_ALPHA", 0.08)
+            max_alpha = getattr(config, "LANDMARK_EMA_MAX_ALPHA", 0.95)
             alpha = min_alpha + (max_alpha - min_alpha) * min(1.0, dist_lm / 0.012)
             
             self.filtered_lm_x = alpha * tracking_lm.x + (1.0 - alpha) * self.filtered_lm_x

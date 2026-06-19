@@ -16,15 +16,18 @@ DEFAULTS: Dict[str, Any] = {
     # Cursor Control Settings
     "SENSITIVITY": 1.6,
     "ACCELERATION_FACTOR": 2.0,  # Speed-based acceleration multiplier
-    "DEADZONE_PIXELS": 2,        # Tiny movement threshold to ignore jitter
+    "DEADZONE_PIXELS": 3,        # Tiny movement threshold to ignore jitter
+    "TRACKING_LANDMARK_ID": 5,   # Stable landmark: 5 (Index MCP), 8 (Index Tip), or "MIDPOINT"
     
     # Smoothing Settings
     "SMOOTHING_METHOD": "one_euro",  # Default to One Euro Filter
     "SMOOTHING_ALPHA": 0.15,         # For EMA
+    "LANDMARK_EMA_MIN_ALPHA": 0.08,  # Minimum alpha for adaptive landmark EMA
+    "LANDMARK_EMA_MAX_ALPHA": 0.95,  # Maximum alpha for adaptive landmark EMA
     
     # One Euro Filter parameters
-    "ONE_EURO_FC_MIN": 1.0,          # Min cutoff frequency (smooths when slow)
-    "ONE_EURO_BETA": 0.05,           # Speed coefficient (reduces lag when fast)
+    "ONE_EURO_FC_MIN": 0.1,          # Min cutoff frequency (smooths when slow)
+    "ONE_EURO_BETA": 0.15,           # Speed coefficient (reduces lag when fast)
     "ONE_EURO_FC_D": 1.0,            # Cutoff frequency for velocity
     
     # Kalman Filter parameters

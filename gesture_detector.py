@@ -23,31 +23,6 @@ class GestureDetector:
         self.gesture_history: List[str] = []
         
         # Index Pinch states (Left Click / Right Click / Scroll Mode / Drag & Drop)
-import cv2
-import mediapipe as mp
-import numpy as np
-import math
-import time
-from collections import Counter
-from typing import Tuple, Optional, Dict, Any, List
-import config
-
-class GestureDetector:
-    def __init__(self) -> None:
-        # Initialize MediaPipe Hands
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands(
-            max_num_hands=2,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.7
-        )
-        self.mp_draw = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
-        
-        # Debounce and State Machine variables for thumb-based gestures
-        self.gesture_history: List[str] = []
-        
-        # Index Pinch states (Left Click / Right Click / Scroll Mode / Drag & Drop)
         self.pinch_active: bool = False
         self.pinch_start_time: float = 0.0
         self.pinch_start_pos: Optional[Tuple[float, float]] = None
