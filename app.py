@@ -107,7 +107,7 @@ def draw_corners(img: np.ndarray, pt1: Tuple[int, int], pt2: Tuple[int, int],
     # Bottom-Right Corner
     cv2.line(img, (x2, y2), (x2 - r, y2), color, thickness)
     cv2.line(img, (x2, y2), (x2, y2 - r), color, thickness)
-
+#chandan
 
 def main() -> None:
     # Clear pinch debug log
