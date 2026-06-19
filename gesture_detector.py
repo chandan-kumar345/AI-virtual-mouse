@@ -115,9 +115,10 @@ class GestureDetector:
         self.active_hand_label = None
         return None, None, None
 
-    def draw_landmarks(self, frame: np.ndarray, landmarks: Any) -> None:
-        """Draws detected hand landmarks and connections on the frame."""
+    def draw_landmarks(self, frame: np.ndarray, landmarks: Any, gesture_data: Optional[Dict[str, Any]] = None) -> None:
+        """Draws detected hand landmarks and connections on the frame, with custom visual feedback for pinches."""
         if landmarks:
+            # Draw standard MediaPipe skeleton first
             self.mp_draw.draw_landmarks(
                 frame,
                 landmarks,
@@ -125,6 +126,94 @@ class GestureDetector:
                 self.mp_drawing_styles.get_default_hand_landmarks_style(),
                 self.mp_drawing_styles.get_default_hand_connections_style()
             )
+            
+            # Custom premium visual feedback: bigger dots, extra midpoint guide dots, glowing finger tips
+            try:
+                h, w, c = frame.shape
+                lms = landmarks.landmark
+                thumb_tip = lms[4]
+                index_tip = lms[8]
+                middle_tip = lms[12]
+                ring_tip = lms[16]
+                pinky_tip = lms[20]
+                
+                # Convert normalized coordinates to pixel coordinates
+                thumb_px = (int(thumb_tip.x * w), int(thumb_tip.y * h))
+                index_px = (int(index_tip.x * w), int(index_tip.y * h))
+                midpoint_px = ((thumb_px[0] + index_px[0]) // 2, (thumb_px[1] + index_px[1]) // 2)
+                
+                # Draw intermediate guidance dots along the connection path
+                quarter1_px = (int(thumb_px[0] * 0.5 + midpoint_px[0] * 0.5), int(thumb_px[1] * 0.5 + midpoint_px[1] * 0.5))
+                quarter3_px = (int(index_px[0] * 0.5 + midpoint_px[0] * 0.5), int(index_px[1] * 0.5 + midpoint_px[1] * 0.5))
+                
+                is_pinched = False
+                if gesture_data:
+                    is_pinched = gesture_data.get("pinch_active", False)
+                else:
+                    wrist = lms[0]
+                    middle_mcp = lms[9]
+                    hand_scale = self.get_distance(wrist, middle_mcp)
+                    if hand_scale > 0:
+                        dist_ti = self.get_distance(thumb_tip, index_tip) / hand_scale
+                        is_pinched = dist_ti < config.PINCH_THRESHOLD
+                
+                # Define glowing colors (BGR)
+                color_cyan = (255, 255, 0)
+                color_magenta = (255, 0, 255)
+                color_green_glow = (0, 255, 128)
+                color_green_solid = (0, 255, 0)
+                color_grey = (200, 200, 200)
+                color_orange = (0, 165, 255)
+                color_purple = (180, 0, 180)
+                color_blue = (255, 100, 0)
+
+                if is_pinched:
+                    # Glowing thick line when pinched (in touch)
+                    cv2.line(frame, thumb_px, index_px, color_green_solid, 6, cv2.LINE_AA)
+                    
+                    # Large glowing midpoint dots
+                    cv2.circle(frame, midpoint_px, 18, color_green_glow, -1, cv2.LINE_AA)
+                    cv2.circle(frame, midpoint_px, 26, color_green_glow, 3, cv2.LINE_AA)
+                    
+                    # Large glowing finger tip dots for pinch
+                    cv2.circle(frame, thumb_px, 16, color_green_solid, -1, cv2.LINE_AA)
+                    cv2.circle(frame, thumb_px, 22, color_green_solid, 3, cv2.LINE_AA)
+                    cv2.circle(frame, index_px, 16, color_green_solid, -1, cv2.LINE_AA)
+                    cv2.circle(frame, index_px, 22, color_green_solid, 3, cv2.LINE_AA)
+                    
+                    # Intermediate dots also glow
+                    cv2.circle(frame, quarter1_px, 11, color_green_glow, -1, cv2.LINE_AA)
+                    cv2.circle(frame, quarter3_px, 11, color_green_glow, -1, cv2.LINE_AA)
+                else:
+                    # Faint connecting guideline when not pinched
+                    cv2.line(frame, thumb_px, index_px, color_grey, 2, cv2.LINE_AA)
+                    
+                    # Midpoint "between dot" - larger, layered circle
+                    cv2.circle(frame, midpoint_px, 13, (120, 120, 120), -1, cv2.LINE_AA)
+                    cv2.circle(frame, midpoint_px, 18, (160, 160, 160), 3, cv2.LINE_AA)
+                    
+                    # Thumb & Index tips - styled larger dots
+                    cv2.circle(frame, thumb_px, 15, color_cyan, -1, cv2.LINE_AA)
+                    cv2.circle(frame, thumb_px, 21, color_cyan, 3, cv2.LINE_AA)
+                    cv2.circle(frame, index_px, 15, color_magenta, -1, cv2.LINE_AA)
+                    cv2.circle(frame, index_px, 21, color_magenta, 3, cv2.LINE_AA)
+                    
+                    # Intermediate guidance dots
+                    cv2.circle(frame, quarter1_px, 9, (180, 180, 180), -1, cv2.LINE_AA)
+                    cv2.circle(frame, quarter3_px, 9, (180, 180, 180), -1, cv2.LINE_AA)
+                
+                # Draw other finger tips larger and more styled (Middle, Ring, Pinky)
+                other_tips = [
+                    ((int(middle_tip.x * w), int(middle_tip.y * h)), color_orange),
+                    ((int(ring_tip.x * w), int(ring_tip.y * h)), color_purple),
+                    ((int(pinky_tip.x * w), int(pinky_tip.y * h)), color_blue)
+                ]
+                for tip_px, color in other_tips:
+                    cv2.circle(frame, tip_px, 14, color, -1, cv2.LINE_AA)
+                    cv2.circle(frame, tip_px, 19, color, 3, cv2.LINE_AA)
+                    
+            except Exception as e:
+                print(f"[Detector] Draw visual feedback error: {e}")
 
     def get_distance(self, lm1: Any, lm2: Any) -> float:
         """Calculates Euclidean distance between two landmarks in 2D (x, y)."""
@@ -234,13 +323,13 @@ class GestureDetector:
         is_fist = (not thumb_extended and not index_extended and not middle_extended and 
                    not ring_extended and not pinky_extended)
         
-        if is_fist:
+        if config.PAUSE_GESTURE_ENABLED and is_fist:
             self.mouse_control_disabled = True
         elif is_open_hand:
             self.mouse_control_disabled = False
 
         # Pinch threshold using hysteresis (Touch / Release thresholds)
-        index_pinch_threshold = config.RELEASE_THRESHOLD if self.pinch_active else config.TOUCH_THRESHOLD
+        index_pinch_threshold = config.PINCH_RELEASE_THRESHOLD if self.pinch_active else config.PINCH_THRESHOLD
         is_pinched = dist_thumb_index < index_pinch_threshold
 
         # 7. Debounce using sliding window majority vote
@@ -280,11 +369,13 @@ class GestureDetector:
         else:
             # Check for double click touch (Thumb + Middle)
             dist_thumb_middle = self.get_distance(thumb_tip, middle_tip) / hand_scale
-            is_double_click_pinch = dist_thumb_middle < config.TOUCH_THRESHOLD
+            double_click_threshold = config.DOUBLE_CLICK_RELEASE_THRESHOLD if self.double_click_active else config.DOUBLE_CLICK_THRESHOLD
+            is_double_click_pinch = dist_thumb_middle < double_click_threshold
             
             # Check for right click touch (Thumb + Ring)
             dist_thumb_ring = self.get_distance(thumb_tip, ring_tip) / hand_scale
-            is_right_click_pinch = dist_thumb_ring < config.TOUCH_THRESHOLD
+            right_click_threshold = config.RIGHT_CLICK_RELEASE_THRESHOLD if self.right_pinch_active else config.RIGHT_CLICK_THRESHOLD
+            is_right_click_pinch = dist_thumb_ring < right_click_threshold
 
             if is_double_click_pinch:
                 if not self.double_click_active:
@@ -319,13 +410,19 @@ class GestureDetector:
                     if not is_double_click_pinch and not is_right_click_pinch:
                         if is_pinched_debounced:
                             if not self.pinch_active:
-                                # Pinch just started
+                                # Pinch just started (index and thumb got in touch with between dot)
                                 self.pinch_active = True
                                 self.pinch_start_time = current_time
                                 self.pinch_start_pos = (index_tip.x, index_tip.y)
                                 self.in_scroll_mode = False
                                 self.is_dragging = False
-                                gesture_event = "Move Cursor"
+                                
+                                # Check if this is a rapid double tap (for Right Click)
+                                time_since_last_release = current_time - self.last_release_time
+                                if time_since_last_release < config.DOUBLE_TAP_MAX_WINDOW:
+                                    gesture_event = "Right Click"
+                                else:
+                                    gesture_event = "Left Click"
                             else:
                                 # Pinch is held
                                 if self.is_dragging:
@@ -351,6 +448,7 @@ class GestureDetector:
                             if self.pinch_active:
                                 # Pinch was just released
                                 self.pinch_active = False
+                                self.last_release_time = current_time
                                 if self.is_dragging:
                                     self.is_dragging = False
                                     gesture_event = "Drag End"
@@ -358,14 +456,7 @@ class GestureDetector:
                                     self.in_scroll_mode = False
                                     gesture_event = "Move Cursor"
                                 else:
-                                    # Quick tap release (< DRAG_START_DELAY and no scroll movement)
-                                    time_since_last_release = current_time - self.last_release_time
-                                    self.last_release_time = current_time
-                                    
-                                    if time_since_last_release < config.DOUBLE_TAP_MAX_WINDOW:
-                                        gesture_event = "Right Click"
-                                    else:
-                                        gesture_event = "Left Click"
+                                    gesture_event = "Move Cursor"
                             else:
                                 gesture_event = "Move Cursor"
 

@@ -38,12 +38,12 @@ DEFAULTS: Dict[str, Any] = {
     "TRACKING_BOX_BOTTOM": 1.0,
     
     # Gesture Thresholds (normalized relative to hand size)
-    "PINCH_THRESHOLD": 0.05,               # Threshold to engage Left Click / Drag
-    "PINCH_RELEASE_THRESHOLD": 0.07,       # Hysteresis threshold to release Left Click / Drag
-    "RIGHT_CLICK_THRESHOLD": 0.05,          # Threshold to engage Right Click
-    "RIGHT_CLICK_RELEASE_THRESHOLD": 0.07,  # Hysteresis threshold to release Right Click
-    "DOUBLE_CLICK_THRESHOLD": 0.030,         # Threshold to engage Double Click
-    "DOUBLE_CLICK_RELEASE_THRESHOLD": 0.040, # Hysteresis threshold to release Double Click
+    "PINCH_THRESHOLD": 0.13,               # Threshold to engage Left Click / Drag
+    "PINCH_RELEASE_THRESHOLD": 0.16,       # Hysteresis threshold to release Left Click / Drag
+    "RIGHT_CLICK_THRESHOLD": 0.13,          # Threshold to engage Right Click
+    "RIGHT_CLICK_RELEASE_THRESHOLD": 0.16,  # Hysteresis threshold to release Right Click
+    "DOUBLE_CLICK_THRESHOLD": 0.10,         # Threshold to engage Double Click
+    "DOUBLE_CLICK_RELEASE_THRESHOLD": 0.12, # Hysteresis threshold to release Double Click
     
     # New Touch and Double Tap Gestures
     "TOUCH_THRESHOLD": 0.15,                # Normalized distance threshold for touch detection

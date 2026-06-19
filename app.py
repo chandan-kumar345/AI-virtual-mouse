@@ -164,6 +164,10 @@ def main() -> None:
                 time.sleep(0.01)
                 continue
                 
+            # Resize frame to target width and height to handle webcams that don't support requested resolution
+            if frame.shape[1] != config.CAM_WIDTH or frame.shape[0] != config.CAM_HEIGHT:
+                frame = cv2.resize(frame, (config.CAM_WIDTH, config.CAM_HEIGHT))
+                
             # Mirror horizontally for natural tracking
             frame = cv2.flip(frame, 1)
             
@@ -197,7 +201,7 @@ def main() -> None:
                     controller.reset_tracking()
                     time.sleep(0.5)
                 
-                detector.draw_landmarks(frame, landmarks)
+                detector.draw_landmarks(frame, landmarks, gesture_data)
             else:
                 controller.execute_action("No Hand", None, None)
             

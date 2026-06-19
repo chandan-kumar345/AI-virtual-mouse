@@ -302,8 +302,8 @@ class MouseController:
             self.reset_tracking()
             return None
 
-        # Handle Pause Cursor (Open Palm)
-        if gesture == "Pause Cursor":
+        # Handle Pause Mouse / Pause Cursor (Open Palm/Fist)
+        if gesture in ("Pause Mouse", "Pause Cursor"):
             self.is_paused = True
             if self.is_dragging:
                 try:
@@ -318,9 +318,18 @@ class MouseController:
             self.is_paused = False
 
         lms = landmarks.landmark
-
-        # Track Index Finger Tip (Landmark 8) for cursor positioning
-        tracking_lm = lms[8]
+ 
+        # Track the midpoint between Index Finger Tip (Landmark 8) and Thumb Tip (Landmark 4)
+        # to ensure the cursor tracks the center of the pinch rather than jumping.
+        class TrackingPoint:
+            def __init__(self, x: float, y: float):
+                self.x = x
+                self.y = y
+                
+        tracking_lm = TrackingPoint(
+            x=(lms[8].x + lms[4].x) / 2.0,
+            y=(lms[8].y + lms[4].y) / 2.0
+        )
 
         # Adaptive landmark input smoothing to eliminate micro-jitter
         if self.filtered_lm_x is None or self.filtered_lm_y is None:
@@ -421,6 +430,32 @@ class MouseController:
         except Exception as e:
             print(f"[Controller] Move cursor error: {e}")
 
+        # Drag & Drop handling (does not use click cooldown)
+        if gesture == "Drag Start":
+            if not self.is_dragging:
+                try:
+                    pyautogui.mouseDown()
+                    self.is_dragging = True
+                    print(f"[Controller] Drag Start - mouseDown at ({smooth_x}, {smooth_y})")
+                except Exception as e:
+                    print(f"[Controller] mouseDown error: {e}")
+        elif gesture == "Drag":
+            if not self.is_dragging:
+                try:
+                    pyautogui.mouseDown()
+                    self.is_dragging = True
+                    print(f"[Controller] Drag (Recovered) - mouseDown at ({smooth_x}, {smooth_y})")
+                except Exception as e:
+                    print(f"[Controller] mouseDown error: {e}")
+        elif gesture == "Drag End":
+            if self.is_dragging:
+                try:
+                    pyautogui.mouseUp()
+                    self.is_dragging = False
+                    print(f"[Controller] Drag End - mouseUp at ({smooth_x}, {smooth_y})")
+                except Exception as e:
+                    print(f"[Controller] mouseUp error: {e}")
+ 
         # Click action execution with cooldown check
         if current_time > self.click_cooldown_until:
             if gesture == "Left Click":
@@ -441,5 +476,26 @@ class MouseController:
                 self.last_click_time = current_time
                 self.click_cooldown_until = current_time + config.CLICK_COOLDOWN_SEC
                 print(f"[Controller] Executed Right Click at ({smooth_x}, {smooth_y})")
-
+            elif gesture == "Double Click":
+                try:
+                    pyautogui.doubleClick()
+                except Exception as e:
+                    print(f"[Controller] Double Click error: {e}")
+                self.last_click_event = "double"
+                self.last_click_time = current_time
+                self.click_cooldown_until = current_time + config.CLICK_COOLDOWN_SEC
+                print(f"[Controller] Executed Double Click at ({smooth_x}, {smooth_y})")
+            elif gesture == "Screenshot":
+                try:
+                    import os
+                    os.makedirs("screenshots", exist_ok=True)
+                    filename = f"screenshots/screenshot_{int(time.time())}.png"
+                    pyautogui.screenshot(filename)
+                    print(f"[Controller] Screenshot saved to {filename}")
+                except Exception as e:
+                    print(f"[Controller] Screenshot error: {e}")
+                self.last_click_event = "screenshot"
+                self.last_click_time = current_time
+                self.click_cooldown_until = current_time + 1.0  # 1s cooldown for screenshots
+ 
         return smooth_x, smooth_y
